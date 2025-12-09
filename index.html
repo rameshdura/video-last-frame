@@ -3,113 +3,272 @@
 <head>
     <title>Last Frame Extractor</title>
     <style>
-        /* Center the content and set basic styling */
-        body { font-family: Arial; max-width: 500px; margin: 50px auto; text-align: center; }
-        button { padding: 10px 30px; margin: 10px; font-size: 16px; cursor: pointer; }
-        #status { margin: 20px; color: #666; }
-        /* Hide canvas initially - it's only used for frame extraction */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h2 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+            text-align: center;
+        }
+        
+        .preview-area {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .preview-placeholder {
+            color: #adb5bd;
+            font-size: 16px;
+            text-align: center;
+        }
+        
+        #videoPreview, #imagePreview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .loader {
+            display: none;
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            flex: 1;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+        
+        .btn-browse {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-browse:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-process {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        .btn-process:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+        
+        .btn-process:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-download {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            display: none;
+        }
+        
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+        
+        #status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .status-idle { background: #e9ecef; color: #6c757d; }
+        .status-selected { background: #d1ecf1; color: #0c5460; }
+        .status-processing { background: #fff3cd; color: #856404; }
+        .status-done { background: #d4edda; color: #155724; }
+        
         canvas { display: none; }
     </style>
 </head>
 <body>
-    <h2>Last Frame Extractor</h2>
-    
-    <!-- Hidden file input for selecting video files -->
-    <input type="file" id="videoInput" accept="video/*" style="display:none">
-    
-    <!-- Browse button triggers the hidden file input -->
-    <button onclick="document.getElementById('videoInput').click()">Browse</button>
-    
-    <!-- Process button extracts the last frame from selected video -->
-    <button onclick="processVideo()">Process</button>
-    
-    <!-- Download button saves the extracted frame as PNG -->
-    <button onclick="downloadImage()">Download</button>
-    
-    <!-- Status message display area -->
-    <div id="status">No video selected</div>
-    
-    <!-- Hidden video element used to load and seek through the video -->
-    <video id="video" style="display:none"></video>
-    
-    <!-- Canvas element used to capture the video frame as an image -->
-    <canvas id="canvas"></canvas>
+    <div class="container">
+        <h2>🎬 Last Frame Extractor</h2>
+        
+        <!-- Preview area for video and extracted image -->
+        <div class="preview-area" id="previewArea">
+            <div class="preview-placeholder" id="placeholder">📹 Select a video to preview</div>
+            <video id="videoPreview" controls></video>
+            <img id="imagePreview" alt="Extracted frame">
+            <div class="loader" id="loader"></div>
+        </div>
+        
+        <!-- Hidden file input for selecting video files -->
+        <input type="file" id="videoInput" accept="video/*" style="display:none">
+        
+        <!-- Action buttons -->
+        <div class="button-group">
+            <button class="btn-browse" onclick="document.getElementById('videoInput').click()">📁 Browse Video</button>
+            <button class="btn-process" id="processBtn" onclick="processVideo()" disabled>⚡ Process</button>
+            <button class="btn-download" id="downloadBtn" onclick="downloadImage()">💾 Download</button>
+        </div>
+        
+        <!-- Status message display area -->
+        <div id="status" class="status-idle">No video selected</div>
+        
+        <!-- Hidden video element used to load and seek through the video -->
+        <video id="video" style="display:none"></video>
+        
+        <!-- Canvas element used to capture the video frame as an image -->
+        <canvas id="canvas"></canvas>
+    </div>
 
     <script>
-        // Store the selected video file
         let videoFile = null;
-        
-        // Track whether a frame has been extracted
         let processed = false;
+        let videoPreviewURL = null;
 
         // Handle file selection when user picks a video
         document.getElementById('videoInput').onchange = function(e) {
             videoFile = e.target.files[0];
-            document.getElementById('status').textContent = 'Selected: ' + videoFile.name;
-            processed = false; // Reset processed state for new file
+            if (!videoFile) return;
+            
+            // Clean up previous preview URL
+            if (videoPreviewURL) URL.revokeObjectURL(videoPreviewURL);
+            
+            // Show video preview
+            videoPreviewURL = URL.createObjectURL(videoFile);
+            const videoPreview = document.getElementById('videoPreview');
+            videoPreview.src = videoPreviewURL;
+            videoPreview.style.display = 'block';
+            
+            // Hide other elements
+            document.getElementById('placeholder').style.display = 'none';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('downloadBtn').style.display = 'none';
+            
+            // Update status and enable process button
+            const status = document.getElementById('status');
+            status.textContent = '✅ Video selected: ' + videoFile.name;
+            status.className = 'status-selected';
+            document.getElementById('processBtn').disabled = false;
+            processed = false;
         };
 
         // Extract the last frame from the selected video
         function processVideo() {
-            // Validate that a video file has been selected
-            if (!videoFile) {
-                alert('Please browse a video first');
-                return;
-            }
-
-            const video = document.getElementById('video');
-            const canvas = document.getElementById('canvas');
-            const ctx = canvas.getContext('2d'); // Get 2D drawing context
-
-            // Load the video file into the video element
-            video.src = URL.createObjectURL(videoFile);
+            if (!videoFile) return;
             
-            // Once video metadata is loaded, seek to near the end
-            video.onloadedmetadata = function() {
-                // Seek to 0.1 seconds before the end to get the last frame
-                video.currentTime = video.duration - 0.1;
-            };
+            // Show loader and update status
+            document.getElementById('videoPreview').style.display = 'none';
+            document.getElementById('loader').style.display = 'block';
+            const status = document.getElementById('status');
+            status.textContent = '⏳ Processing video...';
+            status.className = 'status-processing';
+            document.getElementById('processBtn').disabled = true;
             
-            // Once seeking is complete, capture the frame
-            video.onseeked = function() {
-                // Set canvas dimensions to match video dimensions
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
+            // Simulate 2 second loading
+            setTimeout(() => {
+                const video = document.getElementById('video');
+                const canvas = document.getElementById('canvas');
+                const ctx = canvas.getContext('2d');
+
+                video.src = URL.createObjectURL(videoFile);
                 
-                // Draw the current video frame onto the canvas
-                ctx.drawImage(video, 0, 0);
+                video.onloadedmetadata = function() {
+                    video.currentTime = video.duration - 0.1;
+                };
                 
-                // Mark as processed and update status
-                processed = true;
-                document.getElementById('status').textContent = 'Last frame extracted!';
-                
-                // Clean up the object URL to free memory
-                URL.revokeObjectURL(video.src);
-            };
+                video.onseeked = function() {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0);
+                    
+                    // Show extracted image
+                    const imagePreview = document.getElementById('imagePreview');
+                    imagePreview.src = canvas.toDataURL();
+                    imagePreview.style.display = 'block';
+                    
+                    // Hide loader
+                    document.getElementById('loader').style.display = 'none';
+                    
+                    // Update status and show download button
+                    status.textContent = '✨ Last frame extracted successfully!';
+                    status.className = 'status-done';
+                    document.getElementById('downloadBtn').style.display = 'block';
+                    document.getElementById('processBtn').disabled = false;
+                    
+                    processed = true;
+                    URL.revokeObjectURL(video.src);
+                };
+            }, 2000);
         }
 
         // Download the extracted frame as a PNG image
         function downloadImage() {
-            // Ensure a frame has been extracted before downloading
-            if (!processed) {
-                alert('Please process a video first');
-                return;
-            }
-
-            const canvas = document.getElementById('canvas');
+            if (!processed) return;
             
-            // Convert canvas content to a blob (binary image data)
+            const canvas = document.getElementById('canvas');
             canvas.toBlob(function(blob) {
-                // Create a temporary URL for the blob
                 const url = URL.createObjectURL(blob);
-                
-                // Create a temporary anchor element to trigger download
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'lastframe.png'; // Set the download filename
-                a.click(); // Trigger the download
-                
-                // Clean up the temporary URL
+                a.download = videoFile.name.replace(/\.[^/.]+$/, '') + '_lastframe.png';
+                a.click();
                 URL.revokeObjectURL(url);
             });
         }

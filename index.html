@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Last Frame Extractor</title>
+    <style>
+        /* Center the content and set basic styling */
+        body { font-family: Arial; max-width: 500px; margin: 50px auto; text-align: center; }
+        button { padding: 10px 30px; margin: 10px; font-size: 16px; cursor: pointer; }
+        #status { margin: 20px; color: #666; }
+        /* Hide canvas initially - it's only used for frame extraction */
+        canvas { display: none; }
+    </style>
+</head>
+<body>
+    <h2>Last Frame Extractor</h2>
+    
+    <!-- Hidden file input for selecting video files -->
+    <input type="file" id="videoInput" accept="video/*" style="display:none">
+    
+    <!-- Browse button triggers the hidden file input -->
+    <button onclick="document.getElementById('videoInput').click()">Browse</button>
+    
+    <!-- Process button extracts the last frame from selected video -->
+    <button onclick="processVideo()">Process</button>
+    
+    <!-- Download button saves the extracted frame as PNG -->
+    <button onclick="downloadImage()">Download</button>
+    
+    <!-- Status message display area -->
+    <div id="status">No video selected</div>
+    
+    <!-- Hidden video element used to load and seek through the video -->
+    <video id="video" style="display:none"></video>
+    
+    <!-- Canvas element used to capture the video frame as an image -->
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // Store the selected video file
+        let videoFile = null;
+        
+        // Track whether a frame has been extracted
+        let processed = false;
+
+        // Handle file selection when user picks a video
+        document.getElementById('videoInput').onchange = function(e) {
+            videoFile = e.target.files[0];
+            document.getElementById('status').textContent = 'Selected: ' + videoFile.name;
+            processed = false; // Reset processed state for new file
+        };
+
+        // Extract the last frame from the selected video
+        function processVideo() {
+            // Validate that a video file has been selected
+            if (!videoFile) {
+                alert('Please browse a video first');
+                return;
+            }
+
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d'); // Get 2D drawing context
+
+            // Load the video file into the video element
+            video.src = URL.createObjectURL(videoFile);
+            
+            // Once video metadata is loaded, seek to near the end
+            video.onloadedmetadata = function() {
+                // Seek to 0.1 seconds before the end to get the last frame
+                video.currentTime = video.duration - 0.1;
+            };
+            
+            // Once seeking is complete, capture the frame
+            video.onseeked = function() {
+                // Set canvas dimensions to match video dimensions
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // Draw the current video frame onto the canvas
+                ctx.drawImage(video, 0, 0);
+                
+                // Mark as processed and update status
+                processed = true;
+                document.getElementById('status').textContent = 'Last frame extracted!';
+                
+                // Clean up the object URL to free memory
+                URL.revokeObjectURL(video.src);
+            };
+        }
+
+        // Download the extracted frame as a PNG image
+        function downloadImage() {
+            // Ensure a frame has been extracted before downloading
+            if (!processed) {
+                alert('Please process a video first');
+                return;
+            }
+
+            const canvas = document.getElementById('canvas');
+            
+            // Convert canvas content to a blob (binary image data)
+            canvas.toBlob(function(blob) {
+                // Create a temporary URL for the blob
+                const url = URL.createObjectURL(blob);
+                
+                // Create a temporary anchor element to trigger download
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'lastframe.png'; // Set the download filename
+                a.click(); // Trigger the download
+                
+                // Clean up the temporary URL
+                URL.revokeObjectURL(url);
+            });
+        }
+    </script>
+</body>
+</html>
